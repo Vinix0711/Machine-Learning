@@ -1,0 +1,220 @@
+
+#!/usr/bin/env python
+# coding: utf-8
+
+# ==========================================
+# Step 1: Import Libraries
+# ==========================================
+
+import pandas as pd
+import matplotlib.pyplot as plt
+
+from sklearn.model_selection import train_test_split
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.pipeline import Pipeline
+from sklearn.svm import SVC
+
+from sklearn.metrics import (
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    classification_report,
+    confusion_matrix
+)
+
+
+# ==========================================
+# Step 2: Load and Explore the Dataset
+# ==========================================
+
+df = pd.read_csv("heart_disease_dataset.csv")
+
+print("Dataset Shape:", df.shape)
+
+print("\nFirst 5 Records:")
+print(df.head())
+
+
+# ==========================================
+# Step 3: Separate Features and Target
+# ==========================================
+
+X = df.drop("Heart Disease", axis=1)
+y = df["Heart Disease"]
+
+
+# ==========================================
+# Step 4: Identify Numerical and Categorical Features
+# ==========================================
+
+numeric_features = X.select_dtypes(
+    include=["int64", "float64"]
+).columns
+
+categorical_features = X.select_dtypes(
+    include=["object"]
+).columns
+
+print("\nNumerical Features:")
+print(list(numeric_features))
+
+print("\nCategorical Features:")
+print(list(categorical_features))
+
+
+# ==========================================
+# Step 5: Create the Preprocessor
+# ==========================================
+
+preprocessor = ColumnTransformer(
+    transformers=[
+        ("num", StandardScaler(), numeric_features),
+        (
+            "cat",
+            OneHotEncoder(handle_unknown="ignore"),
+            categorical_features
+        )
+    ]
+)
+
+
+# ==========================================
+# Step 6: Split the Dataset
+# ==========================================
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X,
+    y,
+    test_size=0.20,
+    random_state=42,
+    stratify=y
+)
+
+
+# ==========================================
+# Step 7: Define SVM Kernels
+# ==========================================
+
+kernels = ["linear", "poly", "rbf", "sigmoid"]
+
+results = []
+
+
+# ==========================================
+# Step 8: Train and Evaluate SVM Models
+# ==========================================
+
+for kernel in kernels:
+
+    model = Pipeline(
+        steps=[
+            ("preprocessor", preprocessor),
+            ("svm", SVC(kernel=kernel, random_state=42))
+        ]
+    )
+
+    # Train the model
+    model.fit(X_train, y_train)
+
+    # Make predictions
+    y_pred = model.predict(X_test)
+
+    # Calculate evaluation metrics
+    accuracy = accuracy_score(y_test, y_pred)
+
+    precision = precision_score(
+        y_test,
+        y_pred,
+        zero_division=0
+    )
+
+    recall = recall_score(
+        y_test,
+        y_pred,
+        zero_division=0
+    )
+
+    f1 = f1_score(
+        y_test,
+        y_pred,
+        zero_division=0
+    )
+
+    # Store the results
+    results.append([
+        kernel,
+        accuracy,
+        precision,
+        recall,
+        f1
+    ])
+
+    # Display model evaluation
+    print("\n======================================")
+    print("SVM Kernel:", kernel)
+    print("======================================")
+
+    print("Accuracy :", accuracy)
+    print("Precision:", precision)
+    print("Recall   :", recall)
+    print("F1 Score :", f1)
+
+    print("\nClassification Report:")
+    print(
+        classification_report(
+            y_test,
+            y_pred,
+            zero_division=0
+        )
+    )
+
+
+# ==========================================
+# Step 9: Compare Kernel Performance
+# ==========================================
+
+results_df = pd.DataFrame(
+    results,
+    columns=[
+        "Kernel",
+        "Accuracy",
+        "Precision",
+        "Recall",
+        "F1 Score"
+    ]
+)
+
+print("\nKernel Comparison:")
+print(results_df)
+
+
+# ==========================================
+# Step 10: Plot Kernel Accuracy Comparison
+# ==========================================
+
+plt.figure(figsize=(8, 5))
+
+plt.bar(
+    results_df["Kernel"],
+    results_df["Accuracy"]
+)
+
+plt.xlabel("SVM Kernel")
+plt.ylabel("Accuracy")
+plt.title("SVM Performance with Different Kernels")
+plt.ylim(0, 1)
+
+plt.show()
+
+
+# ==========================================
+# Step 11: Result
+# ==========================================
+
+print("\nResult:")
+print(
+    "SVM classification was successfully performed "
+    "using Linear, Polynomial, RBF and Sigmoid kernels."
+)

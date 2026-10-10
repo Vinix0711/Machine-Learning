@@ -1,0 +1,306 @@
+
+#!/usr/bin/env python
+# coding: utf-8
+
+# ==========================================
+# 1. Import Required Libraries
+# ==========================================
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Machine Learning Libraries
+from sklearn.model_selection import train_test_split
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.pipeline import Pipeline
+from sklearn.ensemble import RandomForestClassifier
+
+# Evaluation Metrics
+from sklearn.metrics import (
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    classification_report,
+    confusion_matrix,
+    ConfusionMatrixDisplay,
+    roc_curve,
+    roc_auc_score
+)
+
+
+# ==========================================
+# 2. Load the Dataset
+# ==========================================
+
+df = pd.read_csv("heart_disease_dataset.csv")
+
+
+# ==========================================
+# 3. Explore the Dataset
+# ==========================================
+
+print("First 5 Rows:")
+print(df.head())
+
+print("\nDataset Shape:")
+print(df.shape)
+
+print("\nColumn Names:")
+print(df.columns)
+
+print("\nDataset Information:")
+df.info()
+
+print("\nMissing Values:")
+print(df.isnull().sum())
+
+print("\nTarget Class Distribution:")
+print(df["Heart Disease"].value_counts())
+
+
+# ==========================================
+# 4. Separate Features and Target
+# ==========================================
+
+X = df.drop("Heart Disease", axis=1)
+y = df["Heart Disease"]
+
+print("\nFeatures Shape:", X.shape)
+print("Target Shape:", y.shape)
+
+
+# ==========================================
+# 5. Identify Numerical and Categorical Features
+# ==========================================
+
+numerical_features = X.select_dtypes(
+    include=["int64", "float64"]
+).columns
+
+categorical_features = X.select_dtypes(
+    include=["object"]
+).columns
+
+print("\nNumerical Features:")
+print(list(numerical_features))
+
+print("\nCategorical Features:")
+print(list(categorical_features))
+
+
+# ==========================================
+# 6. Preprocess the Features
+# ==========================================
+
+preprocessor = ColumnTransformer(
+    transformers=[
+        (
+            "num",
+            "passthrough",
+            numerical_features
+        ),
+        (
+            "cat",
+            OneHotEncoder(handle_unknown="ignore"),
+            categorical_features
+        )
+    ]
+)
+
+
+# ==========================================
+# 7. Create the Random Forest Classifier
+# ==========================================
+
+rf_model = RandomForestClassifier(
+    n_estimators=100,
+    criterion="gini",
+    max_depth=None,
+    min_samples_split=2,
+    min_samples_leaf=1,
+    max_features="sqrt",
+    random_state=42,
+    n_jobs=-1
+)
+
+
+# ==========================================
+# 8. Create the Machine Learning Pipeline
+# ==========================================
+
+model = Pipeline(
+    steps=[
+        ("preprocessor", preprocessor),
+        ("classifier", rf_model)
+    ]
+)
+
+
+# ==========================================
+# 9. Split the Dataset
+# ==========================================
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X,
+    y,
+    test_size=0.2,
+    random_state=42,
+    stratify=y
+)
+
+print("\nTraining Data:", X_train.shape)
+print("Testing Data:", X_test.shape)
+
+
+# ==========================================
+# 10. Train the Random Forest Model
+# ==========================================
+
+model.fit(X_train, y_train)
+
+print("\nRandom Forest Model Trained Successfully!")
+
+
+# ==========================================
+# 11. Generate Predictions
+# ==========================================
+
+# Predictions on training data
+y_train_pred = model.predict(X_train)
+
+# Predictions on testing data
+y_test_pred = model.predict(X_test)
+
+print("\nPredictions Generated Successfully!")
+
+
+# ==========================================
+# 12. Calculate Evaluation Metrics
+# ==========================================
+
+train_accuracy = accuracy_score(
+    y_train,
+    y_train_pred
+)
+
+test_accuracy = accuracy_score(
+    y_test,
+    y_test_pred
+)
+
+precision = precision_score(
+    y_test,
+    y_test_pred,
+    zero_division=0
+)
+
+recall = recall_score(
+    y_test,
+    y_test_pred,
+    zero_division=0
+)
+
+f1 = f1_score(
+    y_test,
+    y_test_pred,
+    zero_division=0
+)
+
+print("\n==========================================")
+print("       RANDOM FOREST EVALUATION")
+print("==========================================")
+
+print("Training Accuracy :", round(train_accuracy, 4))
+print("Testing Accuracy  :", round(test_accuracy, 4))
+print("Precision         :", round(precision, 4))
+print("Recall            :", round(recall, 4))
+print("F1 Score          :", round(f1, 4))
+
+
+# ==========================================
+# 13. Classification Report
+# ==========================================
+
+print("\nClassification Report:")
+print(
+    classification_report(
+        y_test,
+        y_test_pred,
+        zero_division=0
+    )
+)
+
+
+# ==========================================
+# 14. Confusion Matrix
+# ==========================================
+
+cm = confusion_matrix(y_test, y_test_pred)
+
+print("\nConfusion Matrix:")
+print(cm)
+
+disp = ConfusionMatrixDisplay(
+    confusion_matrix=cm,
+    display_labels=["No Heart Disease", "Heart Disease"]
+)
+
+disp.plot()
+
+plt.title("Confusion Matrix - Random Forest")
+plt.show()
+
+
+# ==========================================
+# 15. Predict Probabilities
+# ==========================================
+
+y_test_proba = model.predict_proba(X_test)[:, 1]
+
+
+# ==========================================
+# 16. Calculate ROC Curve and AUC
+# ==========================================
+
+fpr, tpr, thresholds = roc_curve(
+    y_test,
+    y_test_proba
+)
+
+auc_score = roc_auc_score(
+    y_test,
+    y_test_proba
+)
+
+print("\nROC-AUC Score:", round(auc_score, 4))
+
+
+# ==========================================
+# 17. Plot ROC Curve
+# ==========================================
+
+plt.figure(figsize=(8, 6))
+
+plt.plot(
+    fpr,
+    tpr,
+    label=f"Random Forest (AUC = {auc_score:.2f})"
+)
+
+plt.plot(
+    [0, 1],
+    [0, 1],
+    linestyle="--",
+    label="Random Classifier"
+)
+
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+plt.title("ROC Curve - Random Forest")
+plt.legend()
+plt.grid()
+plt.show()
